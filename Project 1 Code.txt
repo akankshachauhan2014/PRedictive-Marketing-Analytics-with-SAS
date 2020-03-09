@@ -1,0 +1,55 @@
+proc print data=a1(obs=10);
+run; /* reading the first 10 observations of the dataset*/
+
+ /* Question 1: Calculating frequency for each of Gender, Vehicle Size and Vehicle Class*/
+proc freq; table Gender; Run;
+proc freq; table Vehicle_Class; Run;
+proc freq; table Vehicle_Size; Run;
+
+ /*Question 2*/
+proc means data = a1;var Customer_Lifetime_Value; class Gender Vehicle_Size Vehicle_Class;
+
+ /*Question 3*/
+data a2;set a1;if Vehicle_Size="Medsize" or Vehicle_Size="Large";
+proc ttest; var Customer_Lifetime_Value; class Vehicle_Size;run;
+
+/*Question 4*/
+proc ttest data=a1; var Customer_Lifetime_Value; class Gender;run; 
+
+
+/*Question 5*/
+proc anova data=a1;class sales_channel;model customer_lifetime_value=sales_channel;run;
+
+/*Question 6*/
+proc corr;var Income Customer_Lifetime_Value;run; 
+proc univariate; var Customer_Lifetime_Value; run;
+data a3; set a1;
+if Customer_Lifetime_Value le 3994 then clv=1;
+if Customer_Lifetime_Value ge 8963 then clv=3;
+if Customer_Lifetime_Value lt 8963 and Customer_Lifetime_Value gt 3994 then clv=2;run;
+
+proc freq ; table clv*Education/chisq;run;
+proc freq ; table clv*Marital_Status/chisq;run;
+
+
+/*Question 7*/
+proc freq data = a1;table Renew_Offer_Type*Response/chisq;run;
+
+/*Question 8*/
+data a4; set a1;
+if Customer_Lifetime_Value le 3994 then clv=1;
+if Customer_Lifetime_Value ge 8963 then clv=3;
+if Customer_Lifetime_Value lt 8963 and Customer_Lifetime_Value gt 3994 then clv=2;run;
+
+proc freq ;table Renew_Offer_Type*clv/chisq;run;
+
+/*Question 9*/
+proc freq data=a4; table clv*Renew_Offer_Type*State/chisq;run;
+
+
+/*Question 10*/
+proc anova data = a1; class EmploymentStatus; 
+model Customer_Lifetime_Value=EmploymentStatus; run;
+proc means data = a1;var Customer_Lifetime_Value; class EmploymentStatus;run;
+
+proc freq data=a4; table clv*Renew_Offer_Type*State/chisq;run;

@@ -1,0 +1,87 @@
+Data wage; 
+Infile 'H:\Wage.dat'FirstOBS =2; 
+Input edu hr wage Famearn self sal mar numkid age unemp;
+run; 
+Proc print data = wage (obs = 10) ;run;
+
+/*Create ID and Year Variables*/
+data wage2;
+do CS_ID= 1 to 334;
+    do YEAR_ID=1984 to 1986;
+        output;
+        end;
+end;
+
+/* Merging wage and wage2 datasets */
+data wage3;
+merge wage2 wage;
+proc print data=wage3(obs=10);
+run;
+
+/*setting log for wage */
+Data logWage;
+set wage3;
+lw = log(wage);
+run; 
+Proc print data = logWage (obs = 10) ;run;
+
+/* Creating Dummy Variables for kid */
+data logWage;
+set logWage;
+if Numkid = 0 then kid0 = 1;else kid0 = 0; 
+if Numkid = 1 then kid1 = 1;else kid1 = 0;
+if Numkid = 2 then kid2 = 1;else kid2 = 0;
+if Numkid = 3 then kid3 = 1;else kid3 = 0;
+if Numkid = 4 then kid4 = 1;else kid4 = 0;
+run;
+
+proc print data = logWage; run;
+
+/* Question 1.	Find the best linear regression model. Check for multicollinearity and take appropriate actions. */
+
+               /*BEFORE TAKING LOG WAGE.... r square = .0.1676 */
+proc reg data = wage;
+model wage = age edu hr mar sal self unemp; run; /*r square = .1676 */
+
+proc reg data = logWage;
+model lw = age edu hr mar sal self unemp; run; /*r square = .2484 */ 
+
+/*Taking this to be the best model, should FamEarn be included*/
+proc reg data = logWage;
+model lw = age edu hr mar sal self Famearn; run; /*r square = .6036 */
+
+             /***********To check for Multicollinearity;
+             * As VIF is less than 10 for all variables and collin is less than 100, we can say that there is no multi coliinearity */
+proc reg data = logWage;
+model lw = age edu hr mar sal self Famearn numkid/  vif stb collin; run;
+
+
+/* Question 2.	Develop a model to test if there are nonlinear effects for some variables. Which variables have non-linear effect on ln(wages)?
+
+             /*********** Null hypo = variables are zero, alternate hypo= one of the var is not;
+             ** pvalue less than 0.05; we can reject the null */
+Data logWage; set logWage; 
+Age_sq = age*age;
+Edu_sq = edu*edu;
+lw = log(wage);
+run;
+Proc reg data = logWage; /*  Vif also goes above 100 introducing MC. Thus age does not have non linear effect */
+model lw = age Age_sq edu hr mar sal self Famearn numkid kid1/vif stb collin; run;
+
+/* Question 3. */
+proc model data=logWage;
+parms bo b1 b2 b3 b4 b5 b6 b7 b8 b9 b10;
+lw = bo+ b1*edu + b2*age + b3*self + b4*sal + b5*hr + b6*mar + b7*kid1 + b8*Edu_sq + b9*Age_sq + b10*Famearn;
+fit lw / white breusch=(1 edu age self sal hr mar kid1 Edu_sq Age_sq Famearn) out=white_Wages outresid;run;
+
+
+proc reg data = logWage;
+model lw = age edu hr mar sal self Famearn/vif stb collin; run;
+
+/* Question 4.	Using the same model as above (Q1), run fixed effects models and random effects models i.e., FIXEDONE, FIXEDTWO, RANONE, RANTWO. */
+
+proc panel data= logWage;
+id CS_ID YEAR_ID;
+model lw =  edu age self sal hr mar kid1 Edu_sq Age_sq/FIXONE FIXTWO RANONE RANTWO ;
+run;
+

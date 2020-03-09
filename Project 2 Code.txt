@@ -1,0 +1,123 @@
+DATA cars;
+   INFILE 'H:\93cars.dat' ;
+   INPUT Manufacturer$ 1-14 Model$ 15-29 Type$ 30-36 MinimumPrice 38-41 MidrangePrice 43-46 MaximumPrice 48-51 CityMPG 53-54 HighwayMPG 56-57 AirBags 59-59 DriveTrain 61-61
+	NumberOfCylinders 63-63 EngineSize 65-67 Horsepower 69-71 RPM 73-76 EngineRevolutions Manualtransmission  FuelCapacity Passengercapacity Length Wheelbase Width UTurnSpace RearSeatRoom 
+	LuggageCapacity Weight Domestic ;
+
+Run;
+
+Proc Corr Data = cars;
+Var MidrangePrice Horsepower; run;
+
+Proc STANDARD DATA= cars mean = 0 std = 1 OUT = cars2;
+	var cityMPG  AirBags Horsepower ManualTransmission Domestic;
+run;
+proc print; run;
+ 
+proc reg data = cars2;
+var cityMPG  AirBags Horsepower ManualTransmission Domestic;
+model MidrangePrice = cityMPG AirBags Horsepower ManualTransmission Domestic;
+run;
+ /* Standardized Beta Estimates */
+proc reg data=cars2 plots=none;
+   Orig: model MidrangePrice = cityMPG AirBags Horsepower ManualTransmission Domestic / stb;
+   ods select ParameterEstimates;
+quit;
+
+/* Check Elasticity of Midrange Price wrt Horsepower */
+
+data cars2; set cars3
+         input MidrangePrice Horsepower;
+         lq = log(MidrangePrice) ;
+         lp = log(Horsepower) ;
+     run;
+
+data cars3; set cars2                                                                                                                               
+   x=log(MidrangePrice);                                                                                                                            
+   y=log(Horsepower);                                                                                                                                                                                                                                                      
+run;
+
+
+proc means; var Horsepower;run;
+proc means; var MidrangePrice; run;
+
+proc gplot;
+plot Horsepower*MidrangePrice;
+run;
+
+/* Check the non-linear effect on Midrnage Price*/
+
+PROC GLM;
+MODEL MidrangePrice =Horsepower Horsepower*Horsepower;RUN;
+
+
+/*Adding the interaction effect*/
+
+DATA cars_interaction;
+   INFILE 'H:\93cars.dat' ;
+   INPUT Manufacturer$ 1-14 Model$ 15-29 Type$ 30-36 MinimumPrice 38-41 MidrangePrice 43-46 MaximumPrice 48-51 CityMPG 53-54 HighwayMPG 56-57 AirBags 59-59 DriveTrain 61-61
+	NumberOfCylinders 63-63 EngineSize 65-67 Horsepower 69-71 RPM 73-76 EngineRevolutions Manualtransmission  FuelCapacity Passengercapacity Length Wheelbase Width UTurnSpace RearSeatRoom 
+	LuggageCapacity Weight Domestic ;
+	Hp_weight = Horsepower*Weight;
+
+Run;
+Proc Print; run;
+
+proc reg data = cars_interaction;
+var  Horsepower Weight Hp_weight;
+model MidrangePrice = Horsepower Weight Hp_weight;run;
+
+proc contents; run; 
+
+/* Regression Model 1 */
+proc GLM data = cars2;
+class Type;
+model MidrangePrice = Type EngineSize NumberOfCylinders cityMPG Airbags horsepower Manualtransmission domestic;
+run;
+
+/* Regression Model 2 */
+proc GLM data = cars2;
+class Manufacturer;
+model MidrangePrice = Manufacturer EngineSize NumberOfCylinders cityMPG horsepower Manualtransmission domestic;
+run;
+
+/* Regression Model 3 */
+proc GLM data = cars2;
+class Manufacturer Type;
+model MidrangePrice = Manufacturer Type EngineSize NumberOfCylinders horsepower Manualtransmission domestic;
+run;
+
+
+/* second question*/
+DATA a1;
+   INFILE 'H:\diamond data.dat' FIRSTOBS=2 ;
+   INPUT Cut $ Color $ Clarity $ Carat Prices; 
+RUN;
+
+proc print data=a1(obs=10);
+run; 
+/*q1 we reject the null hypothesis and conclude that there is not relationship between cut & clarity&*/ 
+proc freq data = a1;table cut*clarity/chisq;run;
+/*q2*/
+proc ttest data=a1; var prices; class color;run;
+/*q3  cut color clarity*/
+
+proc contents data=a1; run;
+data a2;
+set a1;
+if cut='Fair' then Cut_Fair=1; else Cut_Fair=0 ; 
+if cut='Good' then Cut_Good=1; else Cut_Good=0;
+if cut='Ideal' then Cut_Ideal=1; else Cut_Ideal=0;
+
+
+if clarity = 'VVS1' then Clarity_VVS1 = 1; else Clarity_VVS1=0;
+if clarity = 'VVS2' then Clarity_VVS2 = 1; else Clarity_VVS2=0;
+if clarity = 'VS1' then Clarity_VS1 = 1; else Clarity_VS1=0;
+
+	
+if color = 'D' then Color1 = 1; else Color1 =0;
+
+proc print data=a2; run;
+
+Proc Reg data=a2;  model prices = Cut_Fair Cut_Good Cut_Ideal Clarity_VVS1 
+Clarity_VVS2 Clarity_VS1 Color1 Carat ;run;
